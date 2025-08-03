@@ -48,7 +48,8 @@ func (d *DataBase) GetAllConversationListDB(ctx context.Context) ([]*model_struc
 	d.mRWMutex.RLock()
 	defer d.mRWMutex.RUnlock()
 	var conversationList []*model_struct.LocalConversation
-	err := errs.WrapMsg(d.conn.WithContext(ctx).Where("latest_msg_send_time > ?", 0).Order("case when is_pinned=1 then 0 else 1 end,max(latest_msg_send_time,draft_text_time) DESC").Find(&conversationList).Error,
+	// 支持显示所有会话，包括没有消息的会话（latest_msg_send_time = 0）
+	err := errs.WrapMsg(d.conn.WithContext(ctx).Where("latest_msg_send_time >= ?", 0).Order("case when is_pinned=1 then 0 else 1 end,max(latest_msg_send_time,draft_text_time) DESC").Find(&conversationList).Error,
 		"GetAllConversationList failed")
 	if err != nil {
 		return nil, err
@@ -59,7 +60,8 @@ func (d *DataBase) GetAllConversationListDB(ctx context.Context) ([]*model_struc
 func (d *DataBase) FindAllConversationConversationID(ctx context.Context) (conversationIDs []string, err error) {
 	d.mRWMutex.RLock()
 	defer d.mRWMutex.RUnlock()
-	return conversationIDs, errs.WrapMsg(d.conn.WithContext(ctx).Model(&model_struct.LocalConversation{}).Where("latest_msg_send_time > ?", 0).Pluck("conversation_id", &conversationIDs).Error, "")
+	// 获取所有会话ID，包括没有消息的会话
+	return conversationIDs, errs.WrapMsg(d.conn.WithContext(ctx).Model(&model_struct.LocalConversation{}).Where("latest_msg_send_time >= ?", 0).Pluck("conversation_id", &conversationIDs).Error, "")
 }
 
 func (d *DataBase) FindAllUnreadConversationConversationID(ctx context.Context) (conversationIDs []string, err error) {
@@ -101,7 +103,8 @@ func (d *DataBase) GetConversationListSplitDB(ctx context.Context, offset, count
 	d.mRWMutex.RLock()
 	defer d.mRWMutex.RUnlock()
 	var conversationList []*model_struct.LocalConversation
-	return conversationList, errs.Wrap(d.conn.WithContext(ctx).Where("latest_msg_send_time > ?", 0).Order("case when is_pinned=1 then 0 else 1 end,max(latest_msg_send_time,draft_text_time) DESC").Offset(offset).Limit(count).Find(&conversationList).Error)
+	// 支持分页显示所有会话，包括没有消息的会话
+	return conversationList, errs.Wrap(d.conn.WithContext(ctx).Where("latest_msg_send_time >= ?", 0).Order("case when is_pinned=1 then 0 else 1 end,max(latest_msg_send_time,draft_text_time) DESC").Offset(offset).Limit(count).Find(&conversationList).Error)
 }
 
 func (d *DataBase) BatchInsertConversationList(ctx context.Context, conversationList []*model_struct.LocalConversation) error {
