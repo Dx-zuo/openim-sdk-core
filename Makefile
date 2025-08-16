@@ -183,12 +183,40 @@ reset_remote_branch:
 	git reset --hard $(remote_branch)
 	git pull $(remote_branch)
 
-## ios: Build the iOS framework
+## ios: Build the iOS framework for device only (arm64)
 .PHONY: ios
 ios:
 	go get golang.org/x/mobile
 	rm -rf build/ open_im_sdk/t_friend_sdk.go open_im_sdk/t_group_sdk.go  open_im_sdk/ws_wrapper/
 	GOARCH=arm64 gomobile bind -v -trimpath -ldflags "-s -w" -o build/OpenIMCore.xcframework -target=ios ./open_im_sdk/ ./open_im_sdk_callback/
+
+## ios-simulator: Build the iOS framework for simulator only (x86_64, arm64)
+.PHONY: ios-simulator
+ios-simulator:
+	go get golang.org/x/mobile
+	rm -rf build/ open_im_sdk/t_friend_sdk.go open_im_sdk/t_group_sdk.go  open_im_sdk/ws_wrapper/
+	gomobile bind -v -trimpath -ldflags "-s -w" -o build/OpenIMCore.xcframework -target=iossimulator ./open_im_sdk/ ./open_im_sdk_callback/
+
+## ios-universal: Build universal iOS xcFramework (device + simulator)
+.PHONY: ios-universal
+ios-universal:
+	go get golang.org/x/mobile
+	rm -rf build/ open_im_sdk/t_friend_sdk.go open_im_sdk/t_group_sdk.go  open_im_sdk/ws_wrapper/
+	gomobile bind -v -trimpath -ldflags "-s -w" -o build/OpenIMCore.xcframework -target=ios,iossimulator ./open_im_sdk/ ./open_im_sdk_callback/
+
+## macos: Build the macOS framework
+.PHONY: macos
+macos:
+	go get golang.org/x/mobile
+	rm -rf build/ open_im_sdk/t_friend_sdk.go open_im_sdk/t_group_sdk.go  open_im_sdk/ws_wrapper/
+	gomobile bind -v -trimpath -ldflags "-s -w" -o build/OpenIMCore.xcframework -target=macos ./open_im_sdk/ ./open_im_sdk_callback/
+
+## apple-universal: Build universal Apple xcFramework (iOS device + iOS simulator + macOS)
+.PHONY: apple-universal
+apple-universal:
+	go get golang.org/x/mobile
+	rm -rf build/ open_im_sdk/t_friend_sdk.go open_im_sdk/t_group_sdk.go  open_im_sdk/ws_wrapper/
+	gomobile bind -v -trimpath -ldflags "-s -w" -o build/OpenIMCore.xcframework -target=ios,iossimulator,macos ./open_im_sdk/ ./open_im_sdk_callback/
 
 ## android: Build the Android library
 # Note: to build an AAR on Windows, gomobile, Android Studio, and the NDK must be installed.

@@ -122,13 +122,49 @@ After compilation is complete, import the generated AAR package into your Androi
 
 1. Navigate to the project root directory.
 
-2. Execute the following command to compile iOS xcframework:
+2. Choose the appropriate build target based on your needs:
 
+   **iOS device version (physical devices only):**
    ```bash
-    make ios
+   make ios
+   ```
+
+   **iOS simulator version:**
+   ```bash
+   make ios-simulator
+   ```
+
+   **iOS universal version (device + simulator):**
+   ```bash
+   make ios-universal
+   ```
+
+   **macOS version:**
+   ```bash
+   make macos
+   ```
+
+   **Apple universal version (iOS device + iOS simulator + macOS):**
+   ```bash
+   make apple-universal
    ```
 
 3. After compilation is complete, import the generated `.xcframework` file into your Xcode project.
+
+#### Build Target Description
+
+| Build Target | Supported Platforms | Purpose | Architecture Support |
+|-------------|-------------------|---------|---------------------|
+| `ios` | iOS device | Physical devices only | arm64 |
+| `ios-simulator` | iOS simulator | Simulator only | x86_64, arm64 |
+| `ios-universal` | iOS device + iOS simulator | Both device and simulator | arm64 (device), x86_64/arm64 (simulator) |
+| `macos` | macOS | macOS native applications | x86_64, arm64 |
+| `apple-universal` | iOS + macOS all platforms | Single build for all Apple platforms | All architectures |
+
+**Recommendations**:
+- Development phase: Use `ios-universal` for easy testing across devices and simulators
+- Production release: Use `apple-universal` for maximum compatibility
+- Specific platforms: Choose the corresponding single-platform build target as needed
 
 ### Common Issues and Solutions
 

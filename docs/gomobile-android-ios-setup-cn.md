@@ -126,13 +126,49 @@ make android
 
 1. 进入项目根目录。
 
-2. 执行以下命令以编译 iOS 的 xcframework：
+2. 根据需要选择合适的构建目标：
 
+   **iOS 设备版本（仅真机）：**
    ```bash
-    make ios
+   make ios
+   ```
+
+   **iOS 模拟器版本：**
+   ```bash
+   make ios-simulator
+   ```
+
+   **iOS 通用版本（设备 + 模拟器）：**
+   ```bash
+   make ios-universal
+   ```
+
+   **macOS 版本：**
+   ```bash
+   make macos
+   ```
+
+   **Apple 全平台通用版本（iOS 设备 + iOS 模拟器 + macOS）：**
+   ```bash
+   make apple-universal
    ```
 
 3. 编译完成后，将生成的 `.xcframework` 文件导入到 Xcode 项目中。
+
+#### 构建目标说明
+
+| 构建目标 | 支持平台 | 用途 | 架构支持 |
+|---------|---------|------|---------|
+| `ios` | iOS 设备 | 仅支持真机运行 | arm64 |
+| `ios-simulator` | iOS 模拟器 | 仅支持模拟器运行 | x86_64, arm64 |
+| `ios-universal` | iOS 设备 + iOS 模拟器 | 同时支持真机和模拟器 | arm64 (设备), x86_64/arm64 (模拟器) |
+| `macos` | macOS | macOS 原生应用 | x86_64, arm64 |
+| `apple-universal` | iOS + macOS 全平台 | 一次构建支持所有 Apple 平台 | 全架构支持 |
+
+**推荐使用**：
+- 开发阶段：使用 `ios-universal` 方便在设备和模拟器间切换测试
+- 生产发布：使用 `apple-universal` 提供最大兼容性
+- 特定平台：根据实际需要选择对应的单一平台构建目标
 
 ### 常见问题及解决方案
 
