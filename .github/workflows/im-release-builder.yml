@@ -1,0 +1,188 @@
+name: IM Release Builder
+
+on:
+  push:
+    tags:
+      - "im-release-v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Tag name for release (e.g., im-release-v3.8.3)"
+        required: true
+        type: string
+
+jobs:
+  build-apple-universal:
+    runs-on: macos-latest
+    env:
+      TAG_VERSION: ${{ github.event.inputs.tag_name || github.ref_name }}
+      PROJECT_NAME: ${{ github.event.repository.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag_name || github.ref }}
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [[ "${{ env.TAG_VERSION }}" == im-release-v* ]]; then
+            VERSION="${{ env.TAG_VERSION }}"
+            VERSION_NUMBER="${VERSION#im-release-v}"
+            echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
+            echo "Extracted version: $VERSION_NUMBER"
+          else
+            echo "Invalid tag format. Expected im-release-v*"
+            exit 1
+          fi
+
+      - name: Create version file
+        run: |
+          mkdir -p version
+          echo -n "${{ steps.version.outputs.version_number }}" > version/version
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Install gomobile
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          gomobile init
+
+      - name: Build iOS Universal xcFramework (Device + Simulator)
+        run: |
+          echo "Building iOS Universal xcFramework..."
+          make ios-universal
+
+      - name: Build macOS xcFramework
+        run: |
+          echo "Building macOS xcFramework..."
+          make macos
+
+      - name: Build Apple Universal xcFramework (iOS + macOS)
+        run: |
+          echo "Building Apple Universal xcFramework..."
+          make apple-universal
+
+      - name: List build outputs
+        run: |
+          echo "Build directory contents:"
+          ls -la build/
+          if [ -d "build/OpenIMCore.xcframework" ]; then
+            echo "xcFramework structure:"
+            find build/OpenIMCore.xcframework -type f | head -20
+          fi
+
+      - name: Create iOS Universal archive
+        run: |
+          cd build
+          archive_name="${PROJECT_NAME}_${{ steps.version.outputs.version_number }}_iOS_Universal_xcFramework.zip"
+          
+          # Clean and rebuild for iOS Universal
+          cd ..
+          rm -rf build/
+          make ios-universal
+          cd build
+          
+          if [ -d "OpenIMCore.xcframework" ]; then
+            zip -r ../$archive_name OpenIMCore.xcframework
+            echo "Created iOS Universal archive: $archive_name"
+          else
+            echo "Error: OpenIMCore.xcframework not found"
+            exit 1
+          fi
+
+      - name: Create macOS archive
+        run: |
+          archive_name="${PROJECT_NAME}_${{ steps.version.outputs.version_number }}_macOS_xcFramework.zip"
+          
+          # Clean and rebuild for macOS
+          rm -rf build/
+          make macos
+          cd build
+          
+          if [ -d "OpenIMCore.xcframework" ]; then
+            zip -r ../$archive_name OpenIMCore.xcframework
+            echo "Created macOS archive: $archive_name"
+          else
+            echo "Error: OpenIMCore.xcframework not found"
+            exit 1
+          fi
+
+      - name: Create Apple Universal archive
+        run: |
+          archive_name="${PROJECT_NAME}_${{ steps.version.outputs.version_number }}_Apple_Universal_xcFramework.zip"
+          
+          # Clean and rebuild for Apple Universal
+          rm -rf build/
+          make apple-universal
+          cd build
+          
+          if [ -d "OpenIMCore.xcframework" ]; then
+            zip -r ../$archive_name OpenIMCore.xcframework
+            echo "Created Apple Universal archive: $archive_name"
+          else
+            echo "Error: OpenIMCore.xcframework not found"
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_VERSION }}
+          name: "IM SDK Release v${{ steps.version.outputs.version_number }}"
+          body: |
+            ## OpenIM SDK Core Release v${{ steps.version.outputs.version_number }}
+            
+            This release includes pre-built xcFramework packages for Apple platforms.
+            
+            ### Available Downloads:
+            
+            📱 **iOS Universal xcFramework** - Supports both iOS devices (arm64) and iOS simulators (x86_64, arm64)
+            - Compatible with iPhone, iPad (real devices and simulators)
+            - Recommended for iOS app development
+            
+            💻 **macOS xcFramework** - Native macOS support
+            - Supports Intel (x86_64) and Apple Silicon (arm64) Macs
+            - For macOS applications
+            
+            🍎 **Apple Universal xcFramework** - All-in-one package
+            - Includes iOS (device + simulator) + macOS support
+            - Single framework for all Apple platforms
+            - Recommended for cross-platform Apple development
+            
+            ### Usage:
+            1. Download the appropriate xcFramework package
+            2. Extract the zip file
+            3. Drag `OpenIMCore.xcframework` into your Xcode project
+            4. Ensure "Embed & Sign" is selected in your target settings
+            
+            ### Requirements:
+            - iOS 11.0+ / macOS 10.13+
+            - Xcode 12.0+
+            - Swift 5.0+
+            
+            Built with gomobile and Go 1.21
+          files: |
+            ${{ env.PROJECT_NAME }}_${{ steps.version.outputs.version_number }}_iOS_Universal_xcFramework.zip
+            ${{ env.PROJECT_NAME }}_${{ steps.version.outputs.version_number }}_macOS_xcFramework.zip
+            ${{ env.PROJECT_NAME }}_${{ steps.version.outputs.version_number }}_Apple_Universal_xcFramework.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Output release info
+        run: |
+          echo "✅ Release created successfully!"
+          echo "🏷️  Tag: ${{ env.TAG_VERSION }}"
+          echo "📦 Version: ${{ steps.version.outputs.version_number }}"
+          echo "🔗 Release URL: ${{ steps.create_release.outputs.url }}"
+          echo ""
+          echo "📁 Uploaded files:"
+          echo "  - iOS Universal xcFramework (device + simulator)"
+          echo "  - macOS xcFramework"
+          echo "  - Apple Universal xcFramework (iOS + macOS)"
