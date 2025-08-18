@@ -360,7 +360,7 @@ func syncCall(operationID string, fn any, args ...any) (res string) {
 }
 func messageCall(callback open_im_sdk_callback.SendMsgCallBack, operationID string, fn any, args ...any) {
 	if callback == nil {
-		log.ZWarn(context.Background(), "callback is nil", nil)
+		log.ZWarn(context.Background(), "messageCall: callback is nil", nil)
 		return
 	}
 	go messageCall_(callback, operationID, fn, args...)
@@ -398,6 +398,7 @@ func messageCall_(callback open_im_sdk_callback.SendMsgCallBack, operationID str
 	t := time.Now()
 	ins := make([]reflect.Value, 0, numIn)
 	ctx := ccontext.WithOperationID(IMUserContext.Context(), operationID)
+	// 关键修复：使用正确的类型化键存储回调对象
 	ctx = ccontext.WithSendMessageCallback(ctx, callback)
 	funcPtr := reflect.ValueOf(fn).Pointer()
 	funcName := runtime.FuncForPC(funcPtr).Name()
@@ -436,7 +437,6 @@ func messageCall_(callback open_im_sdk_callback.SendMsgCallBack, operationID str
 	if numOut := fnt.NumOut(); numOut > 0 {
 		lastErr = fnt.Out(numOut - 1).Implements(reflect.ValueOf(new(error)).Elem().Type())
 	}
-	//fmt.Println("fnv:", fnv.Interface(), "ins:", ins)
 	outs := fnv.Call(ins)
 
 	outVals := make([]any, 0, len(outs))

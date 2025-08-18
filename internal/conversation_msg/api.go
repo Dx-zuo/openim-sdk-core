@@ -3,7 +3,6 @@ package conversation_msg
 import (
 	"context"
 	"fmt"
-	"github.com/openimsdk/protocol/msg"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -12,10 +11,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/openimsdk/protocol/msg"
+
 	"github.com/openimsdk/tools/errs"
 
 	"github.com/openimsdk/openim-sdk-core/v3/internal/third/file"
 	"github.com/openimsdk/openim-sdk-core/v3/open_im_sdk_callback"
+	"github.com/openimsdk/openim-sdk-core/v3/pkg/ccontext"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/common"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/constant"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/content_type"
@@ -281,7 +283,11 @@ func (c *Conversation) SendMessage(ctx context.Context, s *sdk_struct.MsgStruct,
 	if err != nil {
 		return nil, err
 	}
-	callback, _ := ctx.Value("callback").(open_im_sdk_callback.SendMsgCallBack)
+	// 关键修复：使用正确的类型化键获取回调对象
+	callback, _ := ctx.Value(ccontext.CtxCallback).(open_im_sdk_callback.SendMsgCallBack)
+	if callback == nil {
+		return nil, fmt.Errorf("callback is nil from context")
+	}
 	log.ZDebug(ctx, "before insert message is", "message", *s)
 	if !isOnlineOnly {
 		oldMessage, err := c.db.GetMessage(ctx, lc.ConversationID, s.ClientMsgID)
@@ -387,6 +393,7 @@ func (c *Conversation) SendMessage(ctx context.Context, s *sdk_struct.MsgStruct,
 			Name:        c.fileName("voice", s.ClientMsgID) + filepathExt(s.SoundElem.UUID, sourcePath),
 			Cause:       "msg-voice",
 		}, NewUploadFileCallback(ctx, callback.OnProgress, s, lc.ConversationID, c.db))
+		log.ZDebug(ctx, "[CRASH_DEBUG] After UploadFile", "err", err)
 		if err != nil {
 			c.updateMsgStatusAndTriggerConversation(ctx, s.ClientMsgID, "", s.CreateTime, constant.MsgStatusSendFailed, s, lc, isOnlineOnly)
 			return nil, err
@@ -538,7 +545,7 @@ func (c *Conversation) SendMessageNotOss(ctx context.Context, s *sdk_struct.MsgS
 	if err != nil {
 		return nil, err
 	}
-	callback, _ := ctx.Value("callback").(open_im_sdk_callback.SendMsgCallBack)
+	callback, _ := ctx.Value(ccontext.CtxCallback).(open_im_sdk_callback.SendMsgCallBack)
 	if !isOnlineOnly {
 		oldMessage, err := c.db.GetMessage(ctx, lc.ConversationID, s.ClientMsgID)
 		if err != nil {

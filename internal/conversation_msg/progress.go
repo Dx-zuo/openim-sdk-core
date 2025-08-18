@@ -17,6 +17,7 @@ package conversation_msg
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/openimsdk/openim-sdk-core/v3/internal/third/file"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/db_interface"
@@ -26,13 +27,16 @@ import (
 )
 
 func NewUploadFileCallback(ctx context.Context, progress func(progress int), msg *sdk_struct.MsgStruct, conversationID string, db db_interface.DataBase) file.UploadFileCallback {
+	log.ZDebug(ctx, "[CRASH_DEBUG] NewUploadFileCallback called", "progress_func", fmt.Sprintf("%p", progress), "progress_nil", progress == nil)
 	if msg.AttachedInfoElem == nil {
 		msg.AttachedInfoElem = &sdk_struct.AttachedInfoElem{}
 	}
 	if msg.AttachedInfoElem.Progress == nil {
 		msg.AttachedInfoElem.Progress = &sdk_struct.UploadProgress{}
 	}
-	return &msgUploadFileCallback{ctx: ctx, progress: progress, msg: msg, db: db, conversationID: conversationID}
+	callback := &msgUploadFileCallback{ctx: ctx, progress: progress, msg: msg, db: db, conversationID: conversationID}
+	log.ZDebug(ctx, "[CRASH_DEBUG] NewUploadFileCallback created", "callback", fmt.Sprintf("%p", callback), "callback.progress", fmt.Sprintf("%p", callback.progress))
+	return callback
 }
 
 type msgUploadFileCallback struct {
@@ -71,6 +75,7 @@ func (c *msgUploadFileCallback) UploadPartComplete(index int, partSize int64, pa
 }
 
 func (c *msgUploadFileCallback) UploadComplete(fileSize int64, streamSize int64, storageSize int64) {
+	log.ZDebug(c.ctx, "[CRASH_DEBUG] UploadComplete called", "progress_func", fmt.Sprintf("%p", c.progress), "progress_nil", c.progress == nil)
 	c.msg.AttachedInfoElem.Progress.Save = storageSize
 	c.msg.AttachedInfoElem.Progress.Current = streamSize
 	c.msg.AttachedInfoElem.Progress.Total = fileSize
@@ -84,13 +89,18 @@ func (c *msgUploadFileCallback) UploadComplete(fileSize int64, streamSize int64,
 	value := int(float64(streamSize) / float64(fileSize) * 100)
 	if c.value < value {
 		c.value = value
+		log.ZDebug(c.ctx, "[CRASH_DEBUG] Before calling progress", "value", value, "progress_func", fmt.Sprintf("%p", c.progress))
 		c.progress(value)
+		log.ZDebug(c.ctx, "[CRASH_DEBUG] After calling progress")
 	}
 }
 
 func (c *msgUploadFileCallback) Complete(size int64, url string, typ int) {
+	log.ZDebug(c.ctx, "[CRASH_DEBUG] Complete called", "progress_func", fmt.Sprintf("%p", c.progress), "progress_nil", c.progress == nil)
 	if c.value != 100 {
+		log.ZDebug(c.ctx, "[CRASH_DEBUG] Before calling progress(100)")
 		c.progress(100)
+		log.ZDebug(c.ctx, "[CRASH_DEBUG] After calling progress(100)")
 	}
 	c.msg.AttachedInfoElem.Progress = nil
 	data, err := json.Marshal(c.msg.AttachedInfoElem)
