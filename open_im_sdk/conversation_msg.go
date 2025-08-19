@@ -24,6 +24,11 @@ func GetAllConversationList(callback open_im_sdk_callback.Base, operationID stri
 	call(callback, operationID, IMUserContext.Conversation().GetAllConversationList)
 }
 
+// GetAllConversations 获取所有会话，包括没有消息的会话
+func GetAllConversations(callback open_im_sdk_callback.Base, operationID string) {
+	call(callback, operationID, IMUserContext.Conversation().GetAllConversations)
+}
+
 func GetConversationListSplit(callback open_im_sdk_callback.Base, operationID string, offset int, count int) {
 	call(callback, operationID, IMUserContext.Conversation().GetConversationListSplit, offset, count)
 }

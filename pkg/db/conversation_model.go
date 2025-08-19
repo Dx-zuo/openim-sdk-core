@@ -80,7 +80,8 @@ func (d *DataBase) GetAllConversations(ctx context.Context) ([]*model_struct.Loc
 	d.mRWMutex.RLock()
 	defer d.mRWMutex.RUnlock()
 	var conversationList []*model_struct.LocalConversation
-	return conversationList, errs.WrapMsg(d.conn.WithContext(ctx).Find(&conversationList).Error, "GetAllConversations failed")
+	// 获取所有会话，不添加任何约束条件，但保持排序
+	return conversationList, errs.WrapMsg(d.conn.WithContext(ctx).Order("case when is_pinned=1 then 0 else 1 end,max(latest_msg_send_time,draft_text_time) DESC").Find(&conversationList).Error, "GetAllConversations failed")
 }
 
 func (d *DataBase) GetAllConversationIDList(ctx context.Context) (result []string, err error) {
