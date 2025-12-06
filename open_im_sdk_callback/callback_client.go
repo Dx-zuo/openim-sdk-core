@@ -75,6 +75,7 @@ type OnAdvancedMsgListener interface {
 	OnRecvOfflineNewMessage(message string)
 	OnMsgDeleted(message string)
 	OnRecvOnlineOnlyMessage(message string)
+	OnRecvGroupReadReceipt(groupMsgReceiptList string)
 }
 
 type OnUserListener interface {
